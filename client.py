@@ -61,23 +61,11 @@ except ConnectionResetError:
 
 unpack_data = sqlib.sqpacket.unpack(recv)
 unpack_data = unpack_data.data.split(b'\0', 1)[0]
-try: data = json.loads(unpack_data)
+try: data = json.loads(unpack_data.decode())
 except Exception as ex:
     print('\r', end='')
     logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
     logger.negative(f'failed parsing response: {ex}', name)
-    exit(1)
-
-if('success' not in data or 'extra' not in data):
-    print('\r', end='')
-    logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
-    logger.negative(f'response doesn\'t include success AND OR extra key', name)
-    exit(1)
-
-if(not data['success']):
-    print('\r', end='')
-    logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
-    logger.negative(f'attempt failed: {data["extra"]["error"]}', name)
     exit(1)
 
 if('key' not in data['extra']):
