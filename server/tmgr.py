@@ -12,6 +12,7 @@ class clientmgr:
         class InvalidHandlerTypeError(Exception): pass
         class InvalidCodeTypeError(Exception): pass
         class InvalidIdentTypeError(Exception): pass
+        class InvalidFlagTypeError(Exception): pass
         class MethodNotRegisteredError(Exception): pass
         class MethodTypeError(Exception): pass
 
@@ -34,16 +35,17 @@ class clientmgr:
 
                 return resp_dict
 
-            def send(self, prev_pack: sqlib.sqpacket, code: int, message: str, errors = None, data = None, secure = True):
+            def send(self, prev_pack: sqlib.sqpacket, code: int, message: str, errors = None, data = None, flag: sqlib.sqpacket.flag = sqlib.sqpacket.flag.SEC):
+                if(not isinstance(flag, sqlib.sqpacket.flag)): raise clientmgr.error.InvalidFlagTypeError()
                 resp = self._gen_def_resp(code, message, errors, data)
-                if(secure): packet = sqlib.sqpacket(1000, sqlib.sqpacket.flag.SEC.value, prev_pack.counter + 1, self.ident, json.dumps(resp), '')
-                else: packet = sqlib.sqpacket(1000, sqlib.sqpacket.flag.SEC.value, prev_pack.counter + 1, self.ident, '', json.dumps(resp))
+                if(flag == sqlib.sqpacket.flag.SEC): packet = sqlib.sqpacket(1000, flag.value, prev_pack.counter + 1, self.ident, json.dumps(resp), '')
+                else: packet = sqlib.sqpacket(1000, flag.value, prev_pack.counter + 1, self.ident, '', json.dumps(resp))
                  
                 self.conn.sendall(packet.pack())
 
-            def send_raw(self, prev_pack: sqlib.sqpacket, data, secure = True):
-                if(secure): packet = sqlib.sqpacket(1000, sqlib.sqpacket.flag.SEC.value, prev_pack.counter + 1, self.ident, data, '')
-                else: packet = sqlib.sqpacket(1000, sqlib.sqpacket.flag.SEC.value, prev_pack.counter + 1, self.ident, '', data)
+            def send_raw(self, prev_pack: sqlib.sqpacket, data, flag: sqlib.sqpacket.flag = sqlib.sqpacket.flag.SEC):
+                if(flag == sqlib.sqpacket.flag.SEC): packet = sqlib.sqpacket(1000, flag.value, prev_pack.counter + 1, self.ident, data, '')
+                else: packet = sqlib.sqpacket(1000, flag.value, prev_pack.counter + 1, self.ident, '', data)
                 self.conn.sendall(packet.pack())
 
         def __init__(self, conn: socket.socket, host, handler: sqhandler, ident: sqlib.sqpacket.sqident):
@@ -75,17 +77,24 @@ class clientmgr:
 
                 try: packet = sqlib.sqpacket.unpack(data)
                 except sqlib.sqpacket.exceptions.UnpackError:
-                    self.response.send(None, 0, 'uhhhh, i dont understand')
+                    self.conn.sendall(b'i dont get it bro')
                     continue
 
                 flag = sqlib.sqpacket.flag(packet.flags)
                 method = self.handler.get_method(flag)
 
-                if(method is None): self.response.send(packet, 0, 'method not allowed')
+                if(method is None): 
+                    self.response.send(packet, 0, 'method not allowed')
+                    continue
                 if(not isinstance(method, sqhandler.method)): raise clientmgr.error.InvalidHandlerTypeError(f'Method must be type of sqhandler.method, not {type(method).__name__}')
 
                 res = method.callback(packet=packet, response=self.response)
-                self.response.send(packet, 1, res)
+                if(res == None): continue
+                if(isinstance(res, tuple)): 
+                    resp = res[0]
+                    flag = res[1]
+                    self.response.send(packet, 1, resp, flag=flag)
+                elif(isinstance(res, str)): self.response.send(packet, 1, res)
 
     def __init__(self, handler: sqhandler, ident: sqlib.sqpacket.sqident):
         if(not isinstance(handler, sqhandler)): raise clientmgr.error.InvalidHandlerTypeError(f'Handler must be type of {type(sqhandler).__name__}, not {type(handler).__name__}')

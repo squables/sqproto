@@ -118,7 +118,13 @@ def insecure_send(argz):
 
     recv = sock.recv(65535)
     recv_unpacked = sqlib.sqpacket.unpack(recv)
-    return cmgr.command_manager.command.cmd_res(True, None, data=recv_unpacked.data.decode())
+    full_recv = ''
+    for x in recv_unpacked.secure_text.decode():
+        if(ord(x) == 0): break
+        full_recv += x
+    data = json.loads(full_recv)
+    print(data['message'])
+    return cmgr.command_manager.command.cmd_res(True, None)
 
 def help_cmd(argz):
     longest_trig = 0
@@ -174,4 +180,11 @@ while True:
         logger.negative('Connection reset, exiting...', name)
         exit(1)
 
-    print(recv.decode())
+    recv_pack = sqlib.sqpacket.unpack(recv)
+    full_resp = ''
+    for x in recv_pack.secure_text.decode():
+        if(ord(x) == 0): break
+        full_resp += x
+    resp = json.loads(full_resp)
+    msg = resp['message']
+    print(msg)

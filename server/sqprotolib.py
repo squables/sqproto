@@ -71,6 +71,7 @@ class sqpacket:
             return sqpacket.sqident(title, filler, keyid)
 
     class flag(Enum):
+        NON = 0x00
         SYN = 0x01
         ACK = 0x02
         KEY = 0x04
@@ -116,3 +117,18 @@ class sqpacket:
 
         ident = sqpacket.sqident.from_raw(unpacked_data[3].decode())
         return sqpacket(unpacked_data[0], unpacked_data[1], unpacked_data[2], ident, unpacked_data[4], unpacked_data[5])
+
+    def get_data(self) -> str:
+        full = ''
+        for x in self.data.decode():
+            if(ord(x) == 0): break
+            full += x
+        return full
+
+    def get_secure_text(self):
+        full = ''
+        for x in self.secure_text.decode():
+            if(ord(x) == 0): break
+            full += x
+        return full
+
