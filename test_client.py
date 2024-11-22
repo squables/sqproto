@@ -4,7 +4,6 @@ import time
 
 argp = argparse.ArgumentParser(description='Client to test socket stuff')
 
-argp.add_argument('--data', dest='data', help='Data to send', required=True)
 argp.add_argument('--host', dest='host', help='Host to connect to', default='localhost')
 argp.add_argument('--port', dest='port', help='Port to connect to', type=int, default=7901)
 
@@ -21,8 +20,7 @@ except ConnectionRefusedError:
     exit(1)
 
 while True:
-    sock.send(args.data.encode('utf-8'))
-    time.sleep(1/20)
-
-data = sock.recv(1024)
-print(f'recv: {data}')
+    data = input(' > ')
+    sock.send(data.encode('utf-8'))
+    recv = sock.recv(8192)
+    print(recv)

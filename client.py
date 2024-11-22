@@ -61,23 +61,11 @@ except ConnectionResetError:
 
 unpack_data = sqlib.sqpacket.unpack(recv)
 unpack_data = unpack_data.data.split(b'\0', 1)[0]
-try: data = json.loads(unpack_data)
+try: data = json.loads(unpack_data.decode())
 except Exception as ex:
     print('\r', end='')
     logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
     logger.negative(f'failed parsing response: {ex}', name)
-    exit(1)
-
-if('success' not in data or 'extra' not in data):
-    print('\r', end='')
-    logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
-    logger.negative(f'response doesn\'t include success AND OR extra key', name)
-    exit(1)
-
-if(not data['success']):
-    print('\r', end='')
-    logger.negative(f'Attempt to obtain new key {logger.negative_c}failed{logger.negative_c.OFF}', name)
-    logger.negative(f'attempt failed: {data["extra"]["error"]}', name)
     exit(1)
 
 if('key' not in data['extra']):
@@ -130,7 +118,13 @@ def insecure_send(argz):
 
     recv = sock.recv(65535)
     recv_unpacked = sqlib.sqpacket.unpack(recv)
-    return cmgr.command_manager.command.cmd_res(True, None, data=recv_unpacked.data.decode())
+    full_recv = ''
+    for x in recv_unpacked.secure_text.decode():
+        if(ord(x) == 0): break
+        full_recv += x
+    data = json.loads(full_recv)
+    print(data['message'])
+    return cmgr.command_manager.command.cmd_res(True, None)
 
 def help_cmd(argz):
     longest_trig = 0
@@ -186,4 +180,11 @@ while True:
         logger.negative('Connection reset, exiting...', name)
         exit(1)
 
-    print(recv.decode())
+    recv_pack = sqlib.sqpacket.unpack(recv)
+    full_resp = ''
+    for x in recv_pack.secure_text.decode():
+        if(ord(x) == 0): break
+        full_resp += x
+    resp = json.loads(full_resp)
+    msg = resp['message']
+    print(msg)
